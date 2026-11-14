@@ -1,0 +1,167 @@
+@startuml ER图
+skinparam defaultFontName "Microsoft YaHei"
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam linetype ortho
+left to right direction
+
+package "用户与权限域" {
+  entity "sys_role\n角色" as role {
+    * id : BIGINT <<PK>>
+    --
+    role_code : VARCHAR(32) 唯一
+    role_name : VARCHAR(32)
+    remark : VARCHAR(255)
+  }
+
+  entity "sys_user\n用户" as user {
+    * id : BIGINT <<PK>>
+    --
+    username : VARCHAR(32) 唯一
+    password : VARCHAR(100) BCrypt
+    real_name : VARCHAR(32)
+    phone : VARCHAR(20)
+    role_id : BIGINT <<FK>>
+    status : TINYINT 1启用
+  }
+}
+
+package "作物与地块域" {
+  entity "crop\n作物" as crop {
+    * id : BIGINT <<PK>>
+    --
+    name : VARCHAR(32)
+    category : VARCHAR(32)
+    growth_days : INT
+    season : VARCHAR(32)
+  }
+
+  entity "crop_stage\n生长阶段模板" as stage {
+    * id : BIGINT <<PK>>
+    --
+    crop_id : BIGINT <<FK>>
+    stage_name : VARCHAR(32)
+    day_start : INT 种植后天数起
+    day_end : INT 种植后天数止
+    advice : VARCHAR(500)
+  }
+
+  entity "farm_land\n地块" as land {
+    * id : BIGINT <<PK>>
+    --
+    land_no : VARCHAR(32)
+    location : VARCHAR(100)
+    area : DECIMAL(10,2) 亩
+    soil_type : VARCHAR(16)
+    crop_id : BIGINT <<FK>>
+    status : TINYINT
+  }
+
+  entity "grow_record\n作物生长记录" as grow {
+    * id : BIGINT <<PK>>
+    --
+    land_id : BIGINT <<FK>>
+    crop_id : BIGINT <<FK>>
+    record_date : DATE
+    height : DECIMAL(6,2) 株高cm
+    leaf_color : VARCHAR(32)
+    tiller_count : INT 分蘖数
+    pest_status : VARCHAR(200)
+    remark : VARCHAR(255)
+  }
+}
+
+package "任务执行域" {
+  entity "farm_task\n农事任务" as task {
+    * id : BIGINT <<PK>>
+    --
+    task_no : VARCHAR(32) 唯一
+    title : VARCHAR(100)
+    task_type : VARCHAR(16) 整地/播种/施肥/灌溉/打药/除草/采收
+    land_id : BIGINT <<FK>>
+    content : VARCHAR(500)
+    assigner_id : BIGINT <<FK>> 派发人
+    assignee_id : BIGINT <<FK>> 执行人
+    deadline : DATETIME
+    status : VARCHAR(16) pending/doing/completed/overdue/exception
+    summary : VARCHAR(500)
+    work_hours : DECIMAL(5,1)
+    complete_time : DATETIME
+  }
+
+  entity "input_record\n农资投入明细" as input {
+    * id : BIGINT <<PK>>
+    --
+    task_id : BIGINT <<FK>>
+    input_type : VARCHAR(16) seed/fertilizer/pesticide/water
+    name : VARCHAR(50)
+    amount : DECIMAL(10,2)
+    unit : VARCHAR(16)
+    dilution : VARCHAR(50) 稀释倍数
+    remark : VARCHAR(200)
+  }
+
+  entity "task_attachment\n任务现场图片" as attach {
+    * id : BIGINT <<PK>>
+    --
+    task_id : BIGINT <<FK>>
+    file_name : VARCHAR(200)
+    file_path : VARCHAR(500)
+    upload_time : DATETIME
+  }
+}
+
+package "智能提醒域" {
+  entity "reminder\n农事提醒" as reminder {
+    * id : BIGINT <<PK>>
+    --
+    title : VARCHAR(100)
+    type : VARCHAR(16) growth/solar/weather/custom
+    content : VARCHAR(500)
+    user_id : BIGINT <<FK 可空>>
+    land_id : BIGINT <<FK 可空>>
+    crop_id : BIGINT <<FK 可空>>
+    remind_time : DATETIME
+    repeat_type : VARCHAR(16) none/daily/weekly/monthly/yearly
+    priority : VARCHAR(16) normal/important/urgent
+    status : VARCHAR(16) pending/done/cancelled
+    source : VARCHAR(32) 生成来源描述
+  }
+}
+
+package "系统审计域" {
+  entity "operation_log\n操作日志" as log {
+    * id : BIGINT <<PK>>
+    --
+    user_id : BIGINT
+    username : VARCHAR(50)
+    real_name : VARCHAR(50)
+    role_name : VARCHAR(30)
+    module : VARCHAR(30)
+    operation : VARCHAR(100)
+    method : VARCHAR(10)
+    url : VARCHAR(255)
+    ip : VARCHAR(50)
+    duration_ms : BIGINT
+    status : VARCHAR(10) success/error
+    error_msg : VARCHAR(500)
+    create_time : DATETIME
+  }
+}
+
+' ---- 关系 ----
+role ||--o{ user : 1:N 拥有
+user ||--o{ task : 1:N 派发(assigner)
+user ||--o{ task : 1:N 执行(assignee)
+crop ||--o{ stage : 1:N 定义阶段
+crop ||--o{ land : 1:N 种植于
+crop ||--o{ grow : 1:N 生长记录
+land ||--o{ task : 1:N 作业地块
+land ||--o{ grow : 1:N 生长记录
+task ||--o{ input : 1:N 投入明细
+task ||--o{ attach : 1:N 现场图片
+user ..o| reminder : 逻辑关联(可空)
+land ..o| reminder : 逻辑关联(可空)
+crop ..o| reminder : 逻辑关联(可空)
+
+@enduml

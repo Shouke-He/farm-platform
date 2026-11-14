@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>农事作业智能提醒与记录平台 — REST 接口文档</title>
+<style>
+body{font-family:"Microsoft YaHei",-apple-system,"Segoe UI",sans-serif;font-size:17px;line-height:1.75;color:#24292f;max-width:1020px;margin:0 auto;padding:28px 30px 90px;background:#fff}
+h1,h2,h3,h4{line-height:1.35;margin:1.5em 0 .6em;font-weight:700}
+h1{font-size:29px;border-bottom:2px solid #e5e7eb;padding-bottom:.3em}
+h2{font-size:23px;border-bottom:1px solid #eaecef;padding-bottom:.25em}
+h3{font-size:19px}h4{font-size:17px}
+table{border-collapse:collapse;width:100%;margin:1em 0;font-size:15px;display:block;overflow-x:auto}
+th,td{border:1px solid #d0d7de;padding:7px 10px;text-align:left;vertical-align:top}
+th{background:#f6f8fa;font-weight:700}tr:nth-child(even) td{background:#fcfcfd}
+code{background:#f3f4f6;border:1px solid #e5e7eb;border-radius:4px;padding:1px 5px;font-family:Consolas,"Courier New",monospace;font-size:14.5px;color:#b91c1c}
+pre{background:#f6f8fa;border:1px solid #e5e7eb;border-radius:6px;padding:12px 14px;overflow-x:auto}
+pre code{background:none;border:none;color:#24292f;font-size:14px;padding:0}
+blockquote{border-left:4px solid #d0d7de;margin:1em 0;padding:.5em 1em;background:#f9fafb;color:#374151}
+a{color:#0969da;text-decoration:none}a:hover{text-decoration:underline}
+hr{border:none;border-top:1px solid #e5e7eb;margin:2em 0}
+ul,ol{padding-left:1.6em}li{margin:.25em 0}
+.bar{background:#fff8e1;border:1px solid #f0d99b;border-radius:6px;padding:9px 13px;font-size:13.5px;color:#7a5b00;margin-bottom:22px}
+</style>
+</head>
+<body>
+<div class="bar">阅读版（自动生成）｜ 源文件：接口文档.md ｜ 改内容请改同名 .md，再双击 docs 目录里的「重建HTML阅读版.bat」</div>
+<h1>农事作业智能提醒与记录平台 — REST 接口文档</h1>
+<blockquote>版本：v1.0（2026-08-10）→ <strong>v1.1（2026-09-29 修订）</strong><br>基础路径：<code>http://localhost:8080</code>（前端开发代理 <code>/api</code> → 8080）<br>后端框架：SpringBoot 3.5.3 + MyBatis-Plus 3.5.9<br><br>✅ <strong>2026-09-29 修订说明 —— 本文的准确度现在分三档，看标题就知道</strong>：<br><br>| 章节 | 状态 |<br>|---|---|<br>| §0 / §1 / §3 / §5 / §7~§14 | ✅ <strong>与当前系统一致</strong>，可直接照着调 |<br>| <strong>§15 定时任务</strong> | ✅ <strong>已对着源码重写</strong>（9 个 <code>@Scheduled</code> 实测） |<br>| <strong>§16 数据库表清单</strong> | ✅ <strong>已对着实库重写</strong>（14 张表，<code>information_schema</code> 实查） |<br>| <strong>§2 <code>/api/tasks</code></strong> / <strong>§4 <code>/api/calendar</code></strong> / <strong>§6 <code>/api/lands</code></strong> | 🔴 <strong>这些接口已不存在</strong>（无对应 Controller），标题下已加醒目标记，原文保留作历史对照 |<br><br>文末「勘误」小节记录了修订前的核对结论，<strong>保留作留档</strong>。<br>接口的实际分组以源码为准（<strong>17 个 Controller 类 / 16 个 <code>/api</code> 前缀</strong>，<code>grep -rhoE '"/api/[a-z-]+'</code> 实测）：<br><code>/api/auth</code>、<code>/api/plants</code>、<code>/api/plant-species</code>、<code>/api/plant-diseases</code>、<code>/api/reminders</code>、<br><code>/api/executions</code>、<code>/api/records</code>、<code>/api/devices</code>、<code>/api/stats</code>、<code>/api/crops</code>、<br><code>/api/solar-terms</code>、<code>/api/weather</code>、<code>/api/upload</code>、<code>/api/logs</code>、<code>/api/backup</code>、<code>/api/agent</code>。<br><br>⚠️ 注意 <code>/api/executions</code>（<code>ExecutionController</code>）和 <code>/api/records</code>（<code>GrowRecordController</code>）<br><strong>没有类级 <code>@RequestMapping</code></strong>，是把完整路径写在各个方法上的 —— 只按类注解数会漏掉这两个。</blockquote>
+<h2>0. 通用约定</h2>
+<h3>0.1 鉴权方式</h3>
+<p>除 <code>POST /api/auth/login</code> 外，所有接口均需携带 JWT：</p>
+<pre><code>Authorization: Bearer &lt;token&gt;</code></pre>
+<p>登录成功返回 token；拦截器校验失败返回 <code>{"code":401,"msg":"未登录或令牌已过期"}</code>。</p>
+<h3>0.2 统一响应格式</h3>
+<pre><code>{ "code": 200, "msg": "ok", "data": { } }</code></pre>
+<table><thead><tr><th>code</th><th>含义</th></tr></thead><tbody><tr><td>200</td><td>成功（data 为业务数据）</td></tr><tr><td>400</td><td>参数校验失败</td></tr><tr><td>401</td><td>未登录 / 令牌失效</td></tr><tr><td>403</td><td>权限不足</td></tr><tr><td>500</td><td>服务器异常</td></tr></tbody></table>
+<h3>0.3 分页参数</h3>
+<p>列表接口统一支持 <code>page</code>（默认 1）与 <code>size</code>（默认 10）查询参数，返回 MyBatis-Plus 分页结构：</p>
+<pre><code>{ "records": [...], "total": 22, "size": 10, "current": 1 }</code></pre>
+<h3>0.4 四类角色（RBAC）</h3>
+<table><thead><tr><th>role_id</th><th>role_code</th><th>说明</th></tr></thead><tbody><tr><td>1</td><td>ADMIN</td><td>超级管理员：账号管理、操作日志、数据备份、天气刷新</td></tr><tr><td>2</td><td>FARM_ADMIN</td><td>农场管理员：全部业务功能</td></tr><tr><td>3</td><td>AGRONOMIST</td><td>农技人员：提醒管理、记录与统计</td></tr><tr><td>4</td><td>WORKER</td><td>普通作业人员：我的任务、填报记录、上传图片</td></tr></tbody></table>
+<hr>
+<h2>1. 认证与账号（/api/auth）</h2>
+<h3>1.1 登录</h3>
+<p><code>POST /api/auth/login</code>　公开接口</p>
+<table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr></thead><tbody><tr><td>username</td><td>String</td><td>✅</td><td>账号</td></tr><tr><td>password</td><td>String</td><td>✅</td><td>密码（BCrypt 校验）</td></tr></tbody></table>
+<p>响应 <code>data</code>：<code>{ token, userId, username, realName, roleCode, roleName }</code></p>
+<h3>1.2 当前用户信息</h3>
+<p><code>GET /api/auth/me</code>　登录</p>
+<p>响应 <code>data</code>：用户完整信息（不含密码）</p>
+<h3>1.3 角色列表</h3>
+<p><code>GET /api/auth/roles</code>　登录</p>
+<p>响应 <code>data</code>：<code>[{ id, roleCode, roleName, remark }]</code></p>
+<h3>1.4 账号列表</h3>
+<p><code>GET /api/auth/users</code>　超级管理员</p>
+<p>响应 <code>data</code>：全部账号（不含密码）</p>
+<h3>1.5 创建账号</h3>
+<p><code>POST /api/auth/users</code>　超级管理员</p>
+<p>请求体：<code>{ username, password, realName, phone, roleId }</code>（password 自动 BCrypt 加密）</p>
+<h3>1.6 更新账号</h3>
+<p><code>PUT /api/auth/users</code>　超级管理员</p>
+<p>请求体：<code>{ id, realName, phone, roleId, status, password? }</code>（password 为空则不修改）</p>
+<h3>1.7 删除账号</h3>
+<p><code>DELETE /api/auth/users/{id}</code>　超级管理员</p>
+<hr>
+<h2>2. 农事任务（/api/tasks）⚠️ <strong>本节接口已不存在</strong></h2>
+<blockquote>🔴 <strong>2026-09-29 核实：<code>/api/tasks</code> 没有对应的 Controller，以下接口全部已移除。</strong><br>早期「地块—任务」模型重构为「盆栽」模型后，农事任务并入了 <strong><code>/api/reminders</code></strong>（见 §3）；<br>任务执行记录的登记与查询在 <strong><code>/api/executions</code></strong>；完整现状见 <code>系统讲解/07-接口控制层.md</code>。<br><strong>以下内容原样保留作历史对照，请勿照着调用。</strong></blockquote>
+<h3>2.1 任务分页查询</h3>
+<p><code>GET /api/tasks</code>　登录</p>
+<table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr></thead><tbody><tr><td>status</td><td>String</td><td>否</td><td>pending/doing/completed/overdue/exception</td></tr><tr><td>taskType</td><td>String</td><td>否</td><td>整地/播种/施肥/灌溉/打药/除草/采收</td></tr><tr><td>landId</td><td>Long</td><td>否</td><td>地块筛选</td></tr><tr><td>assigneeId</td><td>Long</td><td>否</td><td>执行人筛选</td></tr></tbody></table>
+<p>每条记录动态附加：<code>landName / assignerName / assigneeName / isOverdue</code>（isOverdue=截止时间已过且未完成）。</p>
+<h3>2.2 我的任务</h3>
+<p><code>GET /api/tasks/mine</code>　普通作业人员</p>
+<p>仅返回当前登录执行人的任务，<code>data</code> 同上。</p>
+<h3>2.3 任务详情</h3>
+<p><code>GET /api/tasks/{id}</code>　登录</p>
+<p>响应 <code>data</code>：<code>{ task, inputs: [农资投入], attachments: [现场图片] }</code></p>
+<h3>2.4 派发任务</h3>
+<p><code>POST /api/tasks</code>　农场管理员/农技人员/超管</p>
+<p>请求体：<code>{ title, taskType, landId, content, assigneeId, deadline }</code>，taskNo 自动生成（<code>RW-yyyyMMddHHmmss</code>），创建后 WebSocket 通知执行人。</p>
+<h3>2.5 任务状态流转</h3>
+<p><code>PUT /api/tasks/{id}/status?status=doing|completed|exception</code>　执行人/派发人</p>
+<p>状态机：<code>pending → doing → completed / exception</code>；任务完成后自动记录 complete_time，并通知派发人。</p>
+<h3>2.6 任务填报</h3>
+<p><code>PUT /api/tasks/{id}/report</code>　执行人</p>
+<p>请求体：</p>
+<pre><code>{
+  "summary": "操作摘要",
+  "workHours": 2.5,
+  "inputs": [
+    { "inputType": "fertilizer", "name": "尿素", "amount": 50, "unit": "kg", "dilution": null, "remark": "全田撒施" }
+  ]
+}</code></pre>
+<p><code>inputType</code> 取值：seed（种子）/ fertilizer（肥料）/ pesticide（农药）/ water（水）。填报后自动标记任务完成并通知派发人。</p>
+<h3>2.7 上传现场图片</h3>
+<p><code>POST /api/tasks/{id}/attachment</code>　执行人/派发人</p>
+<p><code>multipart/form-data</code>：字段名 <code>file</code>。文件以 UUID 命名存储于 <code>upload-dir</code>，数据库记录 fileName/filePath/uploadTime，静态访问路径 <code>/uploads/&lt;文件名&gt;</code>。</p>
+<h3>2.8 删除任务</h3>
+<p><code>DELETE /api/tasks/{id}</code>　派发人/超管</p>
+<hr>
+<h2>3. 提醒管理（/api/reminders）</h2>
+<h3>3.1 提醒分页查询</h3>
+<p><code>GET /api/reminders</code>　登录</p>
+<table><thead><tr><th>参数</th><th>类型</th><th>说明</th></tr></thead><tbody><tr><td>type</td><td>String</td><td>growth(生长周期)/solar(节气)/weather(天气)/custom(自定义)</td></tr></tbody></table>
+<h3>3.2 创建提醒</h3>
+<p><code>POST /api/reminders</code>　农技人员及以上</p>
+<p>请求体：<code>{ title, type, content, userId?, landId?, cropId?, remindTime, repeatType, priority }</code></p>
+<h3>3.3 修改提醒</h3>
+<p><code>PUT /api/reminders</code>　农技人员及以上</p>
+<h3>3.4 删除提醒</h3>
+<p><code>DELETE /api/reminders/{id}</code>　农技人员及以上</p>
+<h3>3.5 提醒状态变更</h3>
+<p><code>PUT /api/reminders/{id}/status?status=done|cancelled</code>　登录</p>
+<hr>
+<h2>4. 农事日历（/api/calendar）⚠️ <strong>本节接口已不存在</strong></h2>
+<blockquote>🔴 <strong>2026-09-29 核实：<code>/api/calendar</code> 没有对应的 Controller，以下接口全部已移除。</strong><br>平台<strong>没有做日历视图</strong>；「今天该做什么」由 <code>/api/reminders</code> 按日期过滤后在前端呈现。<br><strong>以下内容原样保留作历史对照，请勿照着调用。</strong></blockquote>
+<h3>4.1 月视图数据</h3>
+<p><code>GET /api/calendar?month=2026-08</code>　登录（缺省当月）</p>
+<p>响应 <code>data</code>：当月全部事件数组（任务按 deadline、提醒按 remind_time 归并），每条含 <code>date / title / type(task|solar|growth|weather|custom) / content / priority / status / source</code>，前端据此渲染月历网格。</p>
+<hr>
+<h2>5. 数据统计（/api/stats）</h2>
+<h3>5.1 看板总览</h3>
+<p><code>GET /api/stats/overview</code>　登录</p>
+<p>响应 <code>data</code>：</p>
+<pre><code>{
+  "total": 22,
+  "statusDist": { "pending": 6, "doing": 2, "completed": 11, "overdue": 1, "exception": 2 },
+  "typeDist":  { "整地": 1, "打药": 4, ... },
+  "people":    { "张师傅": { "total": 15, "done": 7, "onTimeRate": 100 } },
+  "landDist":  { "1": 8, "2": 2 }
+}</code></pre>
+<p>说明：overdue 为动态口径（pending/doing 且截止时间已过）；people 按时完成率 = 完成时间 ≤ 截止时间的已完成任务占比。</p>
+<h3>5.2 提醒处理闭环统计</h3>
+<p><code>GET /api/stats/reminders</code>　登录（管理角色使用）</p>
+<p>响应 <code>data</code>：</p>
+<pre><code>{
+  "total": 12, "pending": 5, "done": 7, "cancelled": 0, "rate": 58.3,
+  "byType": { "growth": { "total": 3, "done": 2 }, "solar": { "total": 2, "done": 1 } }
+}</code></pre>
+<p>说明：rate = 已完成数 / 总数 × 100（保留 1 位小数）；byType 按提醒来源（growth/solar/weather/custom）分组，只含非空类型。配合前端"确认完成"按钮形成提醒处理闭环。</p>
+<hr>
+<h2>6. 地块管理（/api/lands）⚠️ <strong>本节接口已不存在</strong></h2>
+<blockquote>🔴 <strong>2026-09-29 核实：<code>/api/lands</code> 没有对应的 Controller，以下接口全部已移除。</strong><br>「地块」这个概念在重构后由 <strong><code>plant</code>（种植的植物）</strong> 取代，接口在 <code>/api/plants</code>。<br><strong>以下内容原样保留作历史对照，请勿照着调用。</strong></blockquote>
+<h3>6.1 地块列表</h3>
+<p><code>GET /api/lands</code>　登录</p>
+<p>响应 <code>data</code>：地块数组，附加 <code>cropName</code> 关联字段。</p>
+<h3>6.2 新增地块</h3>
+<p><code>POST /api/lands</code>　农场管理员</p>
+<p>请求体：<code>{ landNo, location, area, soilType, cropId, remark }</code></p>
+<h3>6.3 修改地块</h3>
+<p><code>PUT /api/lands</code>　农场管理员</p>
+<h3>6.4 删除地块</h3>
+<p><code>DELETE /api/lands/{id}</code>　农场管理员</p>
+<h3>6.5 地块生长记录列表</h3>
+<p><code>GET /api/lands/{id}/grows</code>　登录</p>
+<p>按 record_date 倒序返回。</p>
+<h3>6.6 新增生长记录</h3>
+<p><code>POST /api/lands/{id}/grows</code>　农技人员</p>
+<p>请求体：<code>{ cropId, recordDate, height, leafColor, tillerCount, pestStatus, remark }</code></p>
+<hr>
+<h2>7. 作物管理（/api/crops）</h2>
+<h3>7.1 作物列表</h3>
+<p><code>GET /api/crops</code>　登录</p>
+<h3>7.2 新增作物</h3>
+<p><code>POST /api/crops</code>　农场管理员</p>
+<p>请求体：<code>{ name, category, growthDays, season, remark }</code></p>
+<h3>7.3 修改作物</h3>
+<p><code>PUT /api/crops</code>　农场管理员</p>
+<h3>7.4 删除作物</h3>
+<p><code>DELETE /api/crops/{id}</code>　农场管理员</p>
+<h3>7.5 生长阶段模板列表</h3>
+<p><code>GET /api/crops/{id}/stages</code>　登录</p>
+<p>按 dayStart 升序返回：<code>[{ stageName, dayStart, dayEnd, advice }]</code>——提醒引擎据此推算生长周期提醒。</p>
+<h3>7.6 新增阶段模板</h3>
+<p><code>POST /api/crops/{id}/stages</code>　农技人员</p>
+<h3>7.7 删除阶段模板</h3>
+<p><code>DELETE /api/crops/stages/{stageId}</code>　农技人员</p>
+<hr>
+<h2>8. 节气知识库（/api/solar-terms）</h2>
+<h3>8.1 节气列表</h3>
+<p><code>GET /api/solar-terms</code>　登录</p>
+<p>响应 <code>data</code>：24 节气数组 <code>[{ id, termName, monthDay, advice, proverb }]</code></p>
+<hr>
+<h2>9. 天气（/api/weather）</h2>
+<h3>9.1 天气预报</h3>
+<p><code>GET /api/weather/forecast</code>　登录</p>
+<p>响应 <code>data</code>：未来 3 天 <code>[{ date, text, tempMax, tempMin, wind }]</code>（和风天气 V7 3d 预报，服务端 30 分钟缓存）。</p>
+<h3>9.2 手动刷新天气预警</h3>
+<p><code>POST /api/weather/scan</code>　超级管理员</p>
+<p>触发预警引擎立即扫描：高温 ≥35℃ / 低温 ≤5℃ / 大风 ≥6 级 / 暴雨·大雨·中雨·雷阵雨·台风·冰雹·雪 → 写 reminder（type=weather，同日同类型去重）→ WebSocket 广播全部在线用户。</p>
+<hr>
+<h2>10. 文件上传（/api/upload）</h2>
+<h3>10.1 通用图片上传</h3>
+<p><code>POST /api/upload</code>　登录</p>
+<p><code>multipart/form-data</code>：字段名 <code>file</code>（单文件）。</p>
+<p>响应 <code>data</code>：<code>{ fileName, url }</code> —— <code>fileName</code> 是用户原始文件名（只用于回显），<code>url</code> 形如 <code>/uploads/&lt;32位UUID&gt;.&lt;扩展名&gt;</code>，可直接当图片地址用。</p>
+<p><strong>两道校验（2026-10-04 加）</strong>，任一不过就 <code>code=400</code> 且<strong>文件不落盘</strong>：</p>
+<table><thead><tr><th>顺序</th><th>校验</th><th>通过条件</th><th>不通过时的 <code>msg</code></th></tr></thead><tbody><tr><td>①</td><td><strong>扩展名白名单</strong></td><td>文件名最后一个点之后的部分（转小写）属于 <code>jpg / jpeg / png / gif / webp / bmp</code></td><td><code>只允许上传图片（jpg / jpeg / png / gif / webp / bmp）</code></td></tr><tr><td>②</td><td><strong>文件头（magic bytes）</strong></td><td>前 12 字节与该扩展名对应的图片格式一致（JPEG <code>FF D8 FF</code>、PNG <code>89 50 4E 47</code>、GIF <code>GIF8</code>、BMP <code>BM</code>、WEBP <code>RIFF....WEBP</code>）</td><td><code>文件内容不是有效图片</code></td></tr></tbody></table>
+<blockquote>为什么两道都要：只做 ①，把 <code>evil.html</code> 改名成 <code>evil.jpg</code> 就绕过（后缀是客户端随便写的）；只做 ② 也不够 —— 文件名带 <code>.html</code> 的图片会被当网页返回，浏览器按 <code>Content-Type</code> 解释就执行了。<br><br>落盘文件名只由「UUID + 白名单后缀」拼成，<strong>不含任何用户输入</strong>，所以路径一定在上传目录内。<br><br>上传后由 <code>GET /uploads/xxx.jpg</code> 直接读磁盘返回（<code>WebConfig</code> 静态资源映射，<strong>不需要带 token</strong>）。</blockquote>
+<p><strong>前端调用点</strong>：用户端 <code>MyPlants.vue</code>（植物照片、生长记录照片）、<code>AddPlantWizard.vue</code>、<code>ExecutionDialog.vue</code>（现场照片，走 el-upload 原生 XHR）；管理端 <code>Species.vue</code>、<code>Disease.vue</code>、<code>ExecutionDialog.vue</code>。各调用点都有一份与后端一致的后缀白名单做前置提示（真正的防线仍在后端）。</p>
+<hr>
+<h2>11. 操作日志（/api/logs）</h2>
+<h3>11.1 日志分页查询</h3>
+<p><code>GET /api/logs</code>　超级管理员</p>
+<table><thead><tr><th>参数</th><th>类型</th><th>说明</th></tr></thead><tbody><tr><td>module</td><td>String</td><td>模块筛选（账号/任务/提醒/天气/系统）</td></tr><tr><td>keyword</td><td>String</td><td>关键词（操作描述/账号/姓名模糊）</td></tr><tr><td>status</td><td>String</td><td>success/error</td></tr></tbody></table>
+<p>响应 <code>data</code>：<code>{ records: [{ module, operation, username, realName, roleName, method, url, ip, durationMs, status, errorMsg, createTime }], total }</code></p>
+<p>说明：日志由 AOP 切面（@OpLog）自动记录，@Async 异步落库，不影响业务响应。</p>
+<hr>
+<h2>12. 数据备份（/api/backup）</h2>
+<h3>12.1 手动备份</h3>
+<p><code>POST /api/backup/run</code>　超级管理员</p>
+<p>响应 <code>data</code>：备份文件名（<code>farm_db_yyyyMMdd_HHmmss.sql</code>）。mysqldump 全量导出（--single-transaction --routines --triggers），另由定时任务每日 03:00 自动执行、保留 7 天。</p>
+<h3>12.2 备份列表</h3>
+<p><code>GET /api/backup/list</code>　超级管理员</p>
+<p>响应 <code>data</code>：<code>[{ name, size, time }]</code> 按时间倒序。</p>
+<hr>
+<h2>13. 智能助手（/api/agent）</h2>
+<blockquote>2026-09 新增模块（详见 <code>docs/Agent模块设计方案.md</code>、<code>docs/Agent模块实施计划.md</code>）。<br>可用 <code>farm.agent.enabled</code> 一键关闭；<strong>关闭时本节所有路径返回 <code>code=500</code></strong> —— 这是本项目全局异常处理的既有约定，不是 404。</blockquote>
+<h3>13.1 对话</h3>
+<p><code>POST /api/agent/chat</code></p>
+<table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr></thead><tbody><tr><td>conversationId</td><td>String</td><td>❌</td><td>会话 id。<strong>同一 id 的多次请求共享上下文</strong>（多轮对话的来源）；不传则落到 <code>default</code> 会话</td></tr><tr><td>message</td><td>String</td><td>✅</td><td>用户问题（中文，支持口语化）</td></tr></tbody></table>
+<p>响应 <code>data</code>：</p>
+<table><thead><tr><th>字段</th><th>类型</th><th>说明</th></tr></thead><tbody><tr><td>reply</td><td>String</td><td>助手回复</td></tr><tr><td>toolsUsed</td><td>String[]</td><td>本轮<strong>真实执行</strong>过的工具名。⚠️ 前端<strong>默认不显示</strong>（函数名属内部实现，不该摊给终端用户）；地址栏加 <code>?agentDebug=1</code> 才在气泡下方渲染成「调用了：xxx」。接口本身照常返回，不受该开关影响</td></tr><tr><td>degraded</td><td>boolean</td><td><strong>true = 走了降级</strong>（模型不可用，回复来自预置答案或固定话术）。前端据此显示「离线模式」角标</td></tr><tr><td>guard</td><td>String</td><td><strong>读数闸门</strong>（<code>ReadingGuard</code>）对本轮的判定：<code>ok</code> = 调过工具；<code>no-tool</code> = 没调工具但也没报读数（打招呼、如实说"查不到"、复述上下文里已有的数字）；<code>hit</code> = 没调工具却报了一个上下文里找不到出处的读数；<code>replaced</code> = 命中且重试仍在编，<strong>回答已被替换成代码直接查库的读数</strong>（2026-09-30 深夜加的第 5 态）；<code>skip</code> = 闸门没参与（离线降级）。⚠️ <strong>当前配置为 <code>on</code>：命中后重试一次；重试仍命中且回答指向该用户名下的植物 → 换成实查读数（<code>replaced</code>），其余情况原样返回</strong>。界面上同样只在 <code>?agentDebug=1</code> 时显示成一橙色诊断行</td></tr></tbody></table>
+<blockquote>⚠️ <code>degraded</code> 必须一路传到界面显示，不许隐藏 —— 用缓存冒充实时结果是欺骗。</blockquote>
+<blockquote><strong>读数闸门为什么存在</strong>（演示会问）：大模型可能<strong>这一轮压根没查库</strong>，直接报一个看起来很像的读数<br>（2026-09-30 实测：助手答「土壤湿度 32%」，同一时刻盆栽卡片是 0.0%，而 32 这个数全库都不存在）。<br>「调没调工具」是模型的概率选择，<strong>prompt 只能压低概率、压不到零</strong>，所以在代码里设一道它绕不过去的闸。<br>判据 = 没调工具 <strong>且</strong> 回答里的读数在本次上下文里找不到出处（复述不算编造）。<br>开关 <code>farm.agent.guard</code>：<code>off</code>（完全不判定）/ <code>dry-run</code>（只记录，回答不动）/ <code>on</code>（命中后<strong>重试一次</strong>；<br>重试仍命中且回答指向<strong>该用户名下真实存在的植物</strong> → 换成代码实查的读数（<code>replaced</code>）；<br>其余情况原样返回 —— 判据会误伤"通用养护常识"类提问，一刀切替换就是把一条正确回答换成"我查不到"）。<br>📌 <strong>2026-09-30 定档 <code>on</code></strong>，不是拍脑袋：18 轮普查 <code>hit=0/18</code>（正常问法一次都没被打扰）。<br>🔴 <strong>值必须带引号写 <code>"on"</code></strong>：YAML 1.1 会把裸 <code>on</code> 解析成布尔 <code>true</code>，注入 String 就成了 <code>"true"</code>，闸门<strong>静默退化成 dry-run</strong> ——<br>2026-09-30 深夜就是这么踩的（用户反馈助手又编了个 32%，复现时发现那一问只花了一次模型调用的时间 = 没发生重试），修法与证据见 <code>开发记录.md</code> 十.135。<br>⚠️ <strong>"演示当天不会被触发"这句话已被实测推翻</strong>：那条 32% 就出在「我茉莉现在的土壤湿度是多少？」上，<strong>连续两次</strong>判 <code>hit</code>。取值仍以 <code>application.yml</code> 为准。</blockquote>
+<p><strong>工具清单（6 个）</strong>：</p>
+<table><thead><tr><th>工具</th><th>类型</th><th>作用</th></tr></thead><tbody><tr><td>getSensorReading</td><td>只读</td><td>查某盆植物的最新环境读数 + 品种适宜区间 + 是否达标判定</td></tr><tr><td>getPlantProfile</td><td>只读</td><td>查品种资料与当前生长阶段（浇水/施肥周期、适宜温湿度、光照、养护要点）。<strong>不限于用户名下的植物</strong>：品种库里有的品种（188 个，如草莓）也照给，但返回里会写明"不属于该用户"（2026-09-30 深夜补，十.136）</td></tr><tr><td>getSusceptibleDiseases</td><td>只读</td><td>反查「某盆植物易感哪些病虫害」：遍历 <code>plant_disease</code> 逐条比对登记的易感植物，命中即收录；未收录如实说明</td></tr><tr><td>getWeather</td><td>只读</td><td>查未来三天天气（南宁/柳州/桂林）</td></tr><tr><td>searchKnowledge</td><td>只读</td><td><strong>RAG 语义检索</strong>知识库（病虫害 158 条 + 节气 24 条 = 182 条向量）</td></tr><tr><td>createFarmTask</td><td><strong>写</strong></td><td>建农事任务。归属校验与人工建任务走同一套业务方法</td></tr></tbody></table>
+<blockquote><strong>为什么 <code>getSusceptibleDiseases</code> 是确定性反查、不走 RAG</strong>：<code>plant_disease</code> 表的方向是<br><strong>「每条病 → 哪些植物易感」</strong>，而用户问的是反方向<strong>「这盆植物 → 哪些病」</strong>。<br>拿反向的问句去喂语义检索，命中哪几条纯看运气 —— 实测同一句话两次答案互相矛盾：<br>一次<strong>漏报</strong>（库里登记的植物被答成"不在名单里"），一次<strong>编出不存在的病名</strong><br>（答出「蛞蝓」「蚧壳虫」，而库里对不上）。这类"答案取决于结构化字段比对"的判断<br>在代码里算准再给模型，与本平台既有的节气换算同一个思路。</blockquote>
+<p><strong>三级降级</strong>（2026-09-29 演练实测：第③级 390ms 返回、第②级 68ms）：</p>
+<table><thead><tr><th>级</th><th>触发条件</th><th>返回</th></tr></thead><tbody><tr><td>①</td><td>正常</td><td>模型回答</td></tr><tr><td>②</td><td>模型不可用 <strong>且</strong> 命中预置答案</td><td><code>（离线预置回答）…</code>，<code>degraded=true</code></td></tr><tr><td>③</td><td>模型不可用 <strong>且</strong> 未命中</td><td>「智能助手暂时不可用，请稍后再试。系统其它功能不受影响。」，<code>degraded=true</code></td></tr></tbody></table>
+<p>预置答案（8 条，<code>agent-fallback.json</code>）<strong>只放与用户数据无关的通用问答</strong>（"你能做什么""怎么添加植物"）。<br>带盆栽数值、位置、编号的答案<strong>一律不进缓存</strong> —— 否则模型挂掉时会端出一个看着像实时、其实已经过期的数字。</p>
+<h3>13.2 探活</h3>
+<p><code>GET /api/agent/status</code> → <code>data: "ok"</code>。前端可用它判断助手是否可用。</p>
+<hr>
+<h2>14. 实时消息（WebSocket）</h2>
+<ul><li>端点：<code>/ws?token=&lt;JWT&gt;</code>（握手拦截器校验 token 并解析 userId）</li><li>登录成功前端自动建立连接（Vite 代理 ws://localhost:8080）</li><li>服务端推送 JSON：<code>{ type, title, content, time }</code></li><li>事件类型：<code>task</code>（任务派发/状态变更/填报）、<code>deadline</code>（任务即将到期，截止前 24h 扫描推送）、<code>weather</code>（天气预警广播）</li></ul>
+<hr>
+<h2>15. 定时任务一览</h2>
+<table><thead><tr><th>任务（所在类）</th><th>周期</th><th>说明</th></tr></thead><tbody><tr><td><code>ReminderService</code></td><td>每日 00:05</td><td>把「重复类型且已完成」的任务重置回待办（<code>cron = "0 5 0 * * *"</code>）</td></tr><tr><td><code>WeatherWarnScheduler</code></td><td>每 2 小时</td><td>拉取配置城市列表的天气预报 → 规则匹配生成天气预警提醒 + 定向推送</td></tr><tr><td><code>PlantAdviceEngine</code></td><td>每 5 分钟</td><td>全量扫盆栽 → 适宜度/病虫害/明日有雨/恢复四路检查，生成种植建议</td></tr><tr><td><code>OfflineCheckScheduler</code></td><td>每 15 秒</td><td>超过在线窗口未上报的设备统一置离线（LWT 之外的兜底）</td></tr><tr><td><code>BackupScheduler</code></td><td>每日 03:00</td><td>mysqldump 全量备份，保留 7 天（<code>cron = "0 0 3 * * ?"</code>）</td></tr><tr><td><code>SensorDataCleanScheduler</code></td><td>每日 03:30</td><td>删除 30 天前的 <code>sensor_data</code>（<code>cron = "0 30 3 * * ?"</code>）</td></tr><tr><td><code>SimulatorService</code></td><td>每 60 秒</td><td>演示用模拟数据生成（<code>farm.simulator.enabled=false</code> 时直接 return，当前即关闭态）</td></tr><tr><td><code>ReminderExpiryScheduler</code></td><td>每 5 分钟</td><td>删除「下发日期已经过去」的未处理 <code>plant_advice</code> / <code>plant_pest</code>（TTL=1 天，物理删除），让引擎按新日期重新生成；<strong>不动</strong> <code>custom</code> / <code>sensor</code> / <code>weather</code></td></tr><tr><td><code>TaskDueNotifyScheduler</code></td><td>每 60 秒</td><td><strong>农事任务到点推送</strong>（2026-10-02 新增）：把用户自建的 <code>custom</code> 任务按重复规则折算成「今天该做的那一次」，到点推 <code>deadline</code> 通知给本人；同一条任务当天只推一次，迟到超 10 分钟不补推</td></tr></tbody></table>
+<blockquote><strong>以上为 2026-10-02 复测的 9 个 <code>@Scheduled</code></strong>（<code>@EnableScheduling</code> 在 <code>FarmPlatformApplication</code>）。<br>原表三行（<code>TaskDeadlineScheduler</code> / <code>WeatherWarnScheduler</code> / <code>BackupScheduler</code>）里的 <strong><code>TaskDeadlineScheduler</code> 已不存在</strong>，<br>但它当年承诺的「任务到期推送」<strong>已于 2026-10-02 真正实现</strong> —— 由 <code>TaskDueNotifyScheduler</code> 承担（见上一行）。<br>在此之前，任务到期只靠前端打开页面时加载 + 每 60 秒轮询呈现（现在<strong>两层都有</strong>：页面轮询 + 后端到点推送）。</blockquote>
+<hr>
+<h2>16. 数据库表清单（2026-09-29 对着实库重写）</h2>
+<blockquote><strong>本节已于 2026-09-29 重写</strong>：原表写于 2026-08-10（v1.0），是早期「地块—作物—任务」模型，<br>系统重构为「盆栽」模型后已对不上实库（原表列了 4 张不存在的表、又漏了 6 张现存表）。<br><strong>原内容与勘误记录保留在文末，本表以 <code>information_schema</code> 实查结果为准。</strong></blockquote>
+<p>实库 <code>farm_db</code> 共 <strong>14 张表</strong>（<code>SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA='farm_db'</code>）：</p>
+<table><thead><tr><th>表名</th><th>说明</th><th>关联</th></tr></thead><tbody><tr><td>sys_role</td><td>角色（<strong>1=ADMIN 管理员 / 2=USER 普通用户</strong>，共 2 条）</td><td>1─N sys_user</td></tr><tr><td>sys_user</td><td>用户</td><td>N─1 sys_role；1─N plant / device / reminder</td></tr><tr><td>crop</td><td>农作物知识库</td><td>1─N crop_stage</td></tr><tr><td>crop_stage</td><td>作物生长阶段模板</td><td>N─1 crop</td></tr><tr><td>plant_species</td><td>品种库（适宜温湿度区间、浇水/施肥周期、养护要点、<code>growth_stages</code> 阶段模型）</td><td>1─N plant；1─N plant_disease（按名/季节匹配）</td></tr><tr><td>plant</td><td>种植的植物（「我的种植」主表，<strong>取代了早期的 farm_land</strong>）</td><td>N─1 plant_species；N─1 device；1─N grow_record / reminder</td></tr><tr><td>plant_disease</td><td>病虫害防治知识库（158 条，同时是智能助手 RAG 的知识来源之一）</td><td>逻辑关联 plant_species.diseases</td></tr><tr><td>device</td><td>传感器设备（含 <code>device_no</code>、在线状态、归属用户）</td><td>1─N sensor_data；1─N reminder(告警)</td></tr><tr><td>sensor_data</td><td>遥测数据（<strong>长表</strong>：<code>device_id + metric + value + collect_time</code>，一行一个指标）</td><td>N─1 device</td></tr><tr><td>execution_record</td><td>任务执行记录（完成/跳过时登记，含备注、农资、照片）</td><td>N─1 reminder</td></tr><tr><td>grow_record</td><td>生长记录（用户对植物状态的观测留档）</td><td>N─1 plant</td></tr><tr><td>reminder</td><td>提醒/任务（来源：<code>custom</code> 用户自建、<code>plant_advice</code>、<code>plant_pest</code>、<code>sensor</code>、<code>weather</code>、<code>solar</code>）</td><td>逻辑关联 user / plant</td></tr><tr><td>operation_log</td><td>操作日志（AOP 审计，管理员可查与导出）</td><td>独立</td></tr><tr><td>solar_term</td><td>二十四节气知识库（24 条，RAG 的知识来源之一）</td><td>独立</td></tr></tbody></table>
+<hr>
+<h3>⚠️ 勘误（2026-09-29 对着代码与 <code>farm_db</code> 实库核对后补，原内容一字未删）</h3>
+<p><strong>本文件版本是 v1.0（2026-08-10），此后系统经过多轮重构，上面这张清单已经对不上实库。</strong><br>实际 <code>farm_db</code> 现在有 <strong>14 张表</strong>。核对结果如下：</p>
+<p><strong>① 上面列了、但实库里已经不存在的 4 张</strong>（早期"地块—作物—任务"模型，重构为"盆栽"模型时移除）：</p>
+<p><code>farm_land</code>、<code>farm_task</code>、<code>input_record</code>、<code>task_attachment</code> —— 实库均无此表。</p>
+<p>同理，本文件 **§2 农事任务 <code>/api/tasks</code>、§4 农事日历 <code>/api/calendar</code>、§6 地块管理 <code>/api/lands</code><br>所描述的接口也已经不存在**（没有对应的 Controller）。</p>
+<p><strong>② 实库里有、但上面没列的 6 张</strong>（当前系统的核心表）：</p>
+<table><thead><tr><th>表名</th><th>说明</th></tr></thead><tbody><tr><td>plant</td><td>种植的植物（"我的种植"主表，取代了早期的 farm_land）</td></tr><tr><td>plant_species</td><td>品种库（适宜温湿度、浇水/施肥周期、养护要点、生长阶段模板）</td></tr><tr><td>plant_disease</td><td>病虫害防治知识库（智能助手 RAG 的知识来源之一，158 条）</td></tr><tr><td>device</td><td>传感器设备</td></tr><tr><td>sensor_data</td><td>遥测数据（<strong>长表</strong>：<code>device_id + metric + value + collect_time</code>）</td></tr><tr><td>execution_record</td><td>任务执行记录</td></tr></tbody></table>
+<p><strong>③ 现存接口的实际分组</strong>（以源码为准，共 17 个 Controller 类 / 16 个 <code>/api</code> 前缀）：</p>
+<p><code>/api/auth</code>、<code>/api/plants</code>、<code>/api/plant-species</code>、<code>/api/plant-diseases</code>、<code>/api/reminders</code>、<br><code>/api/devices</code>、<code>/api/stats</code>、<code>/api/crops</code>、<code>/api/solar-terms</code>、<code>/api/weather</code>、<br><code>/api/upload</code>、<code>/api/logs</code>、<code>/api/backup</code>、<code>/api/agent</code>。</p>
+<hr>
+<h2>17. 种植物养护计划（/api/plants/{id}/care-plan）🆕 2026-10-02</h2>
+<blockquote><strong>为什么单独列一节</strong>：本文件的 §1~§13 是 2026-08-10 的接口分组，<code>/api/plants</code> 这一组当时就没写全（见文末勘误）。<br>本节只补 2026-10-02 新增的这一个接口，其余接口以 <code>docs/系统讲解/07-后端-接口控制层.md</code> 为准。</blockquote>
+<p><strong>作用</strong>：把品种档案里的「浇水周期 / 施肥周期」变成这株植物自己的农事任务（<code>type=custom</code>），直接落进首页「今日农事清单」。</p>
+<table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody><tr><td>方法 / 路径</td><td><code>POST /api/plants/{id}/care-plan</code></td></tr><tr><td>鉴权</td><td>需登录（<code>Authorization: Bearer &lt;token&gt;</code>）；管理员可为任意植物生成，普通用户只能为自己名下的生成，否则 403</td></tr><tr><td>请求体</td><td>无</td></tr><tr><td>响应</td><td><code>{code, msg, data:{plant, created, skipped, items:[{title, cycleDays, repeatType, intervalDays, remindTime}]}}</code></td></tr><tr><td>副作用</td><td><code>reminder</code> 表新增 0~2 行（<code>source='养护计划'</code>、<code>plant_id=该植物</code>）；同名待办已存在则跳过</td></tr><tr><td>周期换算</td><td><strong>2026-10-04 起</strong>：≤1 天→<code>daily</code>，<strong>其余→<code>interval</code>（每 N 天）</strong>，N 落进 <code>reminder.interval_days</code>（改版前是就近映射成 weekly/monthly，真实间隔会被拉成 7/30 天）；<code>remind_time</code> 兼作锚点，今天该做 ⟺ (今天 − 锚点日期) 天数 % N == 0</td></tr><tr><td>前端调用方</td><td>用户端「我的种植」→ 详情抽屉里的「🪴 生成养护计划」按钮</td></tr></tbody></table>
+<p><strong>示例响应</strong>（薄荷：浇水 2 天 / 施肥 20 天，2026-10-04 实测）：</p>
+<pre><code>{ "code": 200, "msg": "success",
+  "data": { "plant": "薄荷", "created": 2, "skipped": 0,
+    "items": [ { "title": "💧 浇水", "cycleDays": 2,  "repeatType": "interval", "intervalDays": 2,  "remindTime": "2026-10-04 14:00" },
+               { "title": "🌿 施肥", "cycleDays": 20, "repeatType": "interval", "intervalDays": 20, "remindTime": "2026-10-04 14:00" } ] } }</code></pre>
+<p><strong>落库后的两条任务</strong>（<code>source</code> 为「养护计划」）：<code>repeat_type</code> 是 <code>interval</code>、<code>interval_days</code> 是 2 和 20、<code>remind_time</code> 既是首次提醒时刻也是锚点 ⇒ 生成当天就进「今日农事清单」，之后每 2 天 / 每 20 天再回来。</p>
+<p><strong>再点一次的响应</strong>：<code>{"created": 0, "skipped": 2, "items": []}</code> —— 去重生效，不会堆重复任务。</p>
+<blockquote>详细实现与实测数据见 <code>docs/系统讲解/06-后端-业务服务层（下）业务支撑.md</code> 的 <code>CarePlanService.java</code> 一节。</blockquote>
+</body>
+</html>

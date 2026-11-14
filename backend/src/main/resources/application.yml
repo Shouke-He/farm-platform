@@ -1,0 +1,62 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: farm-platform
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/farm_db?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: ${DB_PASSWORD:123456}
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 50MB
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+  ai:
+    dashscope:
+      api-key: ${AI_DASHSCOPE_API_KEY:sk-placeholder-not-configured}
+      chat:
+        options:
+          model: qwen-plus
+      embedding:
+        options:
+          model: text-embedding-v4
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+  global-config:
+    db-config:
+      id-type: auto
+
+farm:
+  jwt:
+    secret: farm-platform-secret-key-2026-08-08-this-is-a-long-key-for-hs256
+    expire-hours: 168
+  upload-dir: ./uploads
+  frontend-url: http://localhost:5173
+  weather:
+    host: ${WEATHER_HOST:https://your-qweather-host}
+    key: ${WEATHER_KEY:your-qweather-key}
+    location: 101300101
+    cities: 101300101,101300301,101300501
+  backup:
+    dir: ./backup
+    keep-days: 7
+    mysql-bin: ${MYSQL_BIN:/usr/local/bin}
+  mqtt:
+    port: 1883
+  simulator:
+    enabled: false
+  sensor:
+    keep-days: 30
+  agent:
+    enabled: true
+    timeout-seconds: 30
+    knowledge-file: ./backend/agent-knowledge.json
+    guard: "on"

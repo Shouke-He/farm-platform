@@ -1,0 +1,23 @@
+# ===== 依赖与构建产物 =====
+node_modules/
+dist/
+target/
+*.class
+*.jar
+
+# ===== IDE =====
+.idea/
+.vscode/
+*.iml
+
+# ===== 运行时数据（照片、备份、日志，可再生成） =====
+uploads/
+backup/
+*.log
+*.tmp
+*.lck
+~$*
+
+# ===== 本地环境变量 =====
+.env
+.env.local

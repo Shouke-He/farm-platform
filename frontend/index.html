@@ -1,0 +1,17 @@
+<!-- 单页应用的入口页面：Vite 启动时先加载这个文件，它再加载 src/main.ts，由 main.ts 把 Vue 应用挂到下面的 #app 上 -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- 字符编码、浏览器标签页图标、移动端适配、页面标题 -->
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>农事作业智能提醒与记录平台</title>
+  </head>
+  <body>
+    <!-- Vue 应用的挂载点：main.ts 最后的 app.mount('#app') 就是挂到这里 -->
+    <div id="app"></div>
+    <!-- 入口脚本：整个前端从这里开始加载 -->
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

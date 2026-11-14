@@ -1,0 +1,60 @@
+@startuml 系统用例图
+skinparam defaultFontName "Microsoft YaHei"
+skinparam shadowing false
+left to right direction
+
+actor "用户（种植者）" as user
+actor "管理员" as admin
+
+' ---- 用户端用例 ----
+usecase "注册与登录" as UC_login
+usecase "管理我的种植\n（添改删/图片/绑定设备）" as UC_plant
+usecase "查看生长周期并标注阶段" as UC_stage
+usecase "登记生长记录与查看评估" as UC_grow
+usecase "查看今日农事清单" as UC_today
+usecase "创建农事任务（每日/单次）" as UC_task
+usecase "完成农事任务并填写执行记录" as UC_done
+usecase "查看种植建议与病虫害预防并确认" as UC_advice
+usecase "查询品种库" as UC_species
+usecase "查询病虫害防治知识" as UC_disease
+usecase "查看环境监控（设备指标/曲线）" as UC_monitor
+usecase "处理本人设备告警" as UC_alarm
+usecase "个人中心（昵称/密码/城市）" as UC_profile
+
+user --> UC_login
+user --> UC_plant
+user --> UC_stage
+user --> UC_grow
+user --> UC_today
+user --> UC_task
+user --> UC_done
+user --> UC_advice
+user --> UC_species
+user --> UC_disease
+user --> UC_monitor
+user --> UC_alarm
+user --> UC_profile
+
+' ---- 管理端用例 ----
+usecase "设备管理（增删改/刷新/认领）" as AD_dev
+usecase "查看全平台设备告警" as AD_alarm
+usecase "品种库管理（增删改/图片）" as AD_species
+usecase "病虫害库管理（增删改/图片）" as AD_disease
+usecase "账号管理（用户列表/种植概览）" as AD_user
+usecase "编辑全平台农事任务" as AD_task
+usecase "查看统计看板" as AD_stats
+usecase "查看与导出操作日志" as AD_log
+usecase "手动备份与刷新天气预警" as AD_ops
+
+admin --> AD_dev
+admin --> AD_alarm
+admin --> AD_species
+admin --> AD_disease
+admin --> AD_user
+admin --> AD_task
+admin --> AD_stats
+admin --> AD_log
+admin --> AD_ops
+admin --> UC_login
+
+@enduml

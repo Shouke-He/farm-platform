@@ -1,0 +1,42 @@
+@startuml 系统技术架构图
+skinparam defaultFontName "Microsoft YaHei"
+skinparam shadowing false
+skinparam boxPadding 8
+
+actor "种植用户（农民/个人）" as user
+actor "平台管理员" as admin
+cloud "手机热点 / WiFi 路由器" as net
+
+frame "物联网感知层" {
+  rectangle "ESP32 WROOM-32\n(土壤湿度/温湿度/光照传感器)" as esp
+}
+frame "数据传输层" {
+  rectangle "MQTT 协议（Moquette Broker，端口1883）\n协议标准，覆盖家庭网络与手机热点" as mqtt
+}
+frame "服务端（SpringBoot + JWT）" as srv {
+  rectangle "IoT遥测解析 IotTelemetryService\n（指标白名单 + 上下线状态管理）" as iot
+  rectangle "智能提醒引擎\n（生长/种植建议/虫害/天气/设备告警）" as engine
+  rectangle "业务服务\n（种植物/品种/任务/统计/日志）" as biz
+  rectangle "WebSocket 实时推送\n（NotificationService）" as ws
+}
+frame "数据存储层" {
+  rectangle "MySQL 8.0（farm_db，14 张表）" as db
+}
+frame "展示层（Vue3 + Element Plus + ECharts）" as web {
+  rectangle "用户端（种植）/ 管理端（运营后台）\n今日清单·详情抽屉·曲线·看板" as fe
+}
+
+user --> net
+net --> esp
+esp --> mqtt
+mqtt --> iot
+iot --> db
+engine --> db
+engine --> ws
+biz --> db
+biz --> ws
+ws --> fe
+db --> fe
+admin --> web
+
+@enduml

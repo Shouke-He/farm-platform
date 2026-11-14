@@ -1,0 +1,218 @@
+@startuml ER图v2
+skinparam defaultFontName "Microsoft YaHei"
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam linetype polyline
+left to right direction
+
+package "用户与权限域" {
+  entity "sys_role\n角色" as role {
+    * id : BIGINT <<PK>>
+    --
+    role_code : VARCHAR(32)
+    role_name : VARCHAR(32)
+    remark : VARCHAR(255)
+    create_time : DATETIME
+  }
+
+  entity "sys_user\n用户" as user {
+    * id : BIGINT <<PK>>
+    --
+    username : VARCHAR(32)
+    password : VARCHAR(100)
+    real_name : VARCHAR(32)
+    phone : VARCHAR(20)
+    role_id : BIGINT <<FK>>
+    status : TINYINT
+    city : VARCHAR(20)
+    create_time : DATETIME
+  }
+}
+
+package "设备与感知域" {
+  entity "device\n传感器设备" as dev {
+    * id : BIGINT <<PK>>
+    --
+    device_no : VARCHAR(32)
+    device_name : VARCHAR(50)
+    device_type : VARCHAR(16)
+    status : VARCHAR(10)
+    last_online_time : DATETIME
+    user_id : BIGINT <<FK 可空>>
+    create_time : DATETIME
+  }
+
+  entity "sensor_data\n遥测数据" as data {
+    * id : BIGINT <<PK>>
+    --
+    device_id : BIGINT <<FK>>
+    metric : VARCHAR(20)
+    value : DECIMAL(8,2)
+    collect_time : DATETIME
+  }
+}
+
+package "种植管理域" {
+  entity "plant_species\n植物品种" as sp {
+    * id : BIGINT <<PK>>
+    --
+    name : VARCHAR(50)
+    category : VARCHAR(10)
+    soil_min : INT
+    soil_max : INT
+    temp_min : INT
+    temp_max : INT
+    light_level : VARCHAR(10)
+    water_cycle : INT
+    fertilize_cycle : INT
+    diseases : VARCHAR(200)
+    growth_stages : JSON
+    photo : VARCHAR(255)
+  }
+
+  entity "plant\n种植物" as plant {
+    * id : BIGINT <<PK>>
+    --
+    user_id : BIGINT <<FK>>
+    name : VARCHAR(50)
+    species_id : BIGINT <<FK>>
+    photo : VARCHAR(255)
+    plant_date : DATE
+    device_id : BIGINT <<FK 可空>>
+    location : VARCHAR(10)
+    grow_method : VARCHAR(10)
+    sunlight : VARCHAR(16)
+    container : VARCHAR(16)
+    stage_name : VARCHAR(16)
+    stage_date : DATE
+    remark : VARCHAR(200)
+    create_time : DATETIME
+  }
+
+  entity "grow_record\n生长记录" as grow {
+    * id : BIGINT <<PK>>
+    --
+    plant_id : BIGINT <<FK>>
+    record_time : DATETIME
+    height_cm : DECIMAL(6,1)
+    leaf_color : VARCHAR(10)
+    vigor : VARCHAR(10)
+    photo : VARCHAR(255)
+    assessment : VARCHAR(10)
+    remark : VARCHAR(500)
+    create_time : DATETIME
+  }
+
+  entity "plant_disease\n病虫害知识库" as disease {
+    * id : BIGINT <<PK>>
+    --
+    name : VARCHAR(50)
+    plants : VARCHAR(200)
+    symptom : VARCHAR(500)
+    cause : VARCHAR(200)
+    season : VARCHAR(20)
+    prevention : VARCHAR(500)
+    drug : VARCHAR(200)
+    photo : VARCHAR(255)
+  }
+
+  entity "crop\n农作物" as crop {
+    * id : BIGINT <<PK>>
+    --
+    name : VARCHAR(32)
+    category : VARCHAR(32)
+    growth_days : INT
+    season : VARCHAR(32)
+    remark : VARCHAR(255)
+    create_time : DATETIME
+  }
+
+  entity "crop_stage\n作物阶段模板" as cstage {
+    * id : BIGINT <<PK>>
+    --
+    crop_id : BIGINT <<FK>>
+    stage_name : VARCHAR(32)
+    day_start : INT
+    day_end : INT
+    advice : VARCHAR(500)
+  }
+}
+
+package "提醒与执行域" {
+  entity "reminder\n农事提醒" as rem {
+    * id : BIGINT <<PK>>
+    --
+    title : VARCHAR(100)
+    type : VARCHAR(16)
+    content : VARCHAR(500)
+    user_id : BIGINT <<FK 可空>>
+    remind_time : DATETIME
+    repeat_type : VARCHAR(16)
+    priority : VARCHAR(16)
+    status : VARCHAR(16)
+    source : VARCHAR(32)
+    city : VARCHAR(20)
+    plant_id : BIGINT <<FK 可空>>
+    done_time : DATETIME
+    create_time : DATETIME
+  }
+
+  entity "execution_record\n执行记录" as exec {
+    * id : BIGINT <<PK>>
+    --
+    reminder_id : BIGINT <<FK>>
+    user_id : BIGINT
+    execute_time : DATETIME
+    note : VARCHAR(500)
+    inputs : TEXT
+    photos : TEXT
+    create_time : DATETIME
+  }
+}
+
+package "系统审计与农事知识域" {
+  entity "operation_log\n操作日志" as log {
+    * id : BIGINT <<PK>>
+    --
+    user_id : BIGINT
+    username : VARCHAR(50)
+    real_name : VARCHAR(50)
+    role_name : VARCHAR(30)
+    module : VARCHAR(30)
+    operation : VARCHAR(100)
+    method : VARCHAR(10)
+    url : VARCHAR(255)
+    ip : VARCHAR(50)
+    duration_ms : BIGINT
+    status : VARCHAR(10)
+    error_msg : VARCHAR(500)
+    create_time : DATETIME
+  }
+
+  entity "solar_term\n二十四节气" as solar {
+    * id : BIGINT <<PK>>
+    --
+    term_name : VARCHAR(16)
+    month_day : VARCHAR(8)
+    advice : VARCHAR(500)
+    proverb : VARCHAR(200)
+  }
+}
+
+' ---- 关系 ----
+role ||--o{ user : 1:N 拥有
+user ||--o{ plant : 1:N 种植
+user ..o| dev : 归属(可空)
+user ..o| rem : 接收(可空)
+dev ||--o{ data : 1:N 遥测
+dev ||--o{ plant : 1:N 绑定
+sp ||--o{ plant : 1:N 品种
+plant ||--o{ grow : 1:N 生长记录
+rem ||--o{ exec : 1:N 执行记录
+crop ||--o{ cstage : 1:N 定义阶段
+plant ..o| rem : 逻辑关联(可空)
+plant ..o{ disease : 易感(逻辑)
+sp ..o{ disease : 易感(逻辑)
+solar ..o| rem : 节气提醒(逻辑)
+
+@enduml

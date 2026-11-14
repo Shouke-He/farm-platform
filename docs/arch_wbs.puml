@@ -1,0 +1,51 @@
+@startuml 系统功能结构图
+skinparam defaultFontName "Microsoft YaHei"
+skinparam shadowing false
+skinparam rectangleStyle round
+
+rectangle "农事作业智能提醒与记录平台" as root {
+  rectangle "用户端" as user {
+    rectangle "登录与注册" as u1
+    rectangle "我的种植（种植物管理 / 生长周期 / 浇水时机 / 生长记录 / 今日农事清单）" as u2
+    rectangle "农事任务（创建 / 每日重置 / 完成 / 执行记录 / 完成记录与生长记录视图）" as u3
+    rectangle "品种库" as u4
+    rectangle "病虫害防治" as u5
+    rectangle "环境监控（设备数据 / 曲线 / 告警确认）" as u6
+    rectangle "个人中心（昵称 / 密码 / 所在城市）" as u7
+  }
+  rectangle "管理端" as admin {
+    rectangle "环境监控（设备管理 / 实时趋势 / 全平台告警）" as a1
+    rectangle "品种库管理（CRUD / 图片 / 生长阶段）" as a2
+    rectangle "病虫害库管理（CRUD / 图片）" as a3
+    rectangle "账号管理（用户列表 / 种植概览）" as a4
+    rectangle "任务完成记录（按用户 / 种植物筛选只读查询）" as a5
+    rectangle "统计看板（提醒 / 设备 / 品种 / 区域预警）" as a6
+    rectangle "操作日志（筛选 / 导出）" as a7
+    rectangle "数据备份（服务端每日定时自动 + 备份接口）" as a8
+  }
+  rectangle "智能提醒与物联网支撑" as core {
+    rectangle "MQTT 物联网数据链路（ESP32 上报）" as c1
+    rectangle "智能提醒引擎（生长 / 建议 / 虫害 / 天气 / 告警）" as c2
+    rectangle "WebSocket 实时推送" as c3
+    rectangle "MySQL 数据存储" as c4
+  }
+}
+
+u1 -down- u2
+u2 -down- u3
+u3 -down- u4
+u4 -down- u5
+u5 -down- u6
+u6 -down- u7
+a1 -down- a2
+a2 -down- a3
+a3 -down- a4
+a4 -down- a5
+a5 -down- a6
+a6 -down- a7
+a7 -down- a8
+c1 -down- c2
+c2 -down- c3
+c3 -down- c4
+
+@enduml
