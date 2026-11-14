@@ -1,14 +1,12 @@
 # 农事智能助手（Agent 模块）设计方案
 
 > 创建：2026-09-28 · 状态：**已与用户确认范围（中档），待评审后转实施计划**
-> 相关：`开发记录.md` 十.107（选型调研）、`docs/系统讲解/`（现有系统讲解）
 > ⚠️ 本文档创建时用户处于「暂时不连接 git」状态，**未提交**。
 >
 > ### 📌 实施后的变更（2026-09-30 补注）
 > 本文是**设计当时的记录**，正文里的「5 个工具」就是当时的范围，**正文不再回头改**（保留设计轨迹）。
 > 实施后实际是 **6 个工具**：2026-09-29 晚按用户实测反馈新增了 `getSusceptibleDiseases`
 > （易感病虫害**确定性反查**），另把「该用户名下盆栽清单」拼进了 system prompt。
-> **现状一律以 `docs/接口文档.md` §13 和 `开发记录.md` 十.120 为准。**
 
 ---
 
@@ -71,7 +69,7 @@
 ```
 agent/
 ├── AgentConfig.java        配置层：@Value 读 farm.agent.*；装配全部 Bean
-│                           （整个包 @ConditionalOnProperty("farm.agent.enabled")）
+│ （整个包 @ConditionalOnProperty("farm.agent.enabled")）
 ├── AgentController.java    接口层：POST /api/agent/chat、GET /api/agent/status
 ├── FarmTools.java          工具层：5 个 @Tool，只调现有 Service，不含 AI 逻辑
 ├── KnowledgeIndexer.java   知识层：读 158+24 条 → embed → 写入向量库
@@ -113,7 +111,6 @@ farm:
 | `createFarmTask(String plantName, String title, String remindTime)` | 「帮我建个明天浇水的任务」 | `ReminderService.create(Reminder)`（**内含归属校验**） |
 | `searchKnowledge(String query)` | 「叶子发黄怎么办」 | **RAG 向量检索**（第六节） |
 
-> 🔧 **2026-09-30 深夜补注（实施后）**：`getPlantProfile` 最初只在**用户名下**的植物里找，被问「草莓的种植要点」（品种库里有、他名下没有）时会答“系统里查不到它的品种资料”。现已补**品种库回退**：`findSpeciesByName` 查到就照给参数，但返回里必须写明「该用户名下并没有这盆植物」。分界线是 **个人数据（实时读数/生长阶段/任务）只认自家植物；公共资料（怎么养/容易得什么病）谁都能查**。详见 `开发记录.md` 十.136。
 
 **两个设计决定，演示会被问：**
 
@@ -260,12 +257,7 @@ FarmTools            ← 带 userId 归属校验，调现有 Service
 
 | 文档 | 同步什么 |
 |---|---|
-| `开发记录.md` | 新增十.NNN 条目：实施过程、踩的坑、实测结果 |
-| `docs/系统讲解/00-总览与阅读指南.md` | 若它声称「N 份文档覆盖全系统」，需补上 Agent 模块这一块 |
-| `docs/系统讲解/01-系统功能流程详解.md` | 补一条**链路的真实说明**（用户提问 → 模型 → 工具 → 回答），含「哪些是真调、哪些会降级」 |
 | `docs/接口文档.md` | 补 `POST /api/agent/chat`、`GET /api/agent/status` |
-| `docs/系统讲解/13-代码自查发现的问题清单.md` | 补演示 Q&A（降级、归属校验、为什么不让 LLM 直接判断） |
-| `临时待办.md` / `开发记录-总览.md` | 状态收尾 |
 
 
 ---
